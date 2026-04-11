@@ -64,6 +64,8 @@ Update `AGENTS.md` (or `CLAUDE.md`) when the guidance should be visible in the f
 - mandatory validation commands
 - short "what matters" reminders
 
+If neither `AGENTS.md` nor `CLAUDE.md` exists and a doc update is warranted, create `AGENTS.md` at the repo root with only the guidance that meets the criteria above. Do not create it for weak candidates.
+
 Keep additions terse. Prefer a single bullet or short sentence.
 
 Update onboarding or developer docs when the guidance needs more explanation:
