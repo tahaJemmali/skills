@@ -1,6 +1,6 @@
 ---
 name: prd-to-plan
-description: Turn a PRD into a multi-phase implementation plan using tracer-bullet vertical slices, saved as a local Markdown file in ./plans/. Use when user wants to break down a PRD, create an implementation plan, plan phases from a PRD, or mentions "tracer bullets".
+description: Turn a PRD into a multi-phase implementation plan using tracer-bullet vertical slices, saved as a local Markdown file in ./docs/. Use when user wants to break down a PRD, create an implementation plan, plan phases from a PRD, or mentions "tracer bullets".
 ---
 
 # PRD to Plan
@@ -55,14 +55,26 @@ Ask the user:
 
 Iterate until the user approves the breakdown.
 
+**When invoked by afk (no user interaction):** Skip the quiz. Use your best judgment on granularity and write the plan directly.
+
 ### 6. Write the plan file
 
 Create `./docs/<feature-name>/` if it doesn't exist. Write the plan as a Markdown file named after the feature (e.g. `./docs/meta-direct-whatsapp/plan.md`). Use the template below.
 
+## Task formatting (important for execution)
+
+Each phase's **"What to build"** section controls how ralph executes the phase:
+
+- **Numbered list** (1., 2., 3.) — each item becomes a separate implementation task with its own commit. This is the **preferred format** for phases with multiple deliverables.
+- **Bullet list** (-, *) — each bullet becomes a separate task.
+- **Single paragraph** — the entire phase runs as one task.
+
+Use numbered items whenever a phase has more than one logical deliverable. This gives ralph focused, atomic implementation sessions and granular commit history.
+
 <plan-template>
 # Plan: <Feature Name>
 
-> Source PRD: <brief identifier or link>
+> Source PRD: <relative path to PRD.md, e.g. docs/feature/PRD.md>
 
 ## Architectural decisions
 
@@ -77,11 +89,13 @@ Durable decisions that apply across all phases:
 
 ## Phase 1: <Title>
 
-**User stories**: <list from PRD>
+**User stories**: <comma-separated numbers from PRD>
 
 ### What to build
 
-A concise description of this vertical slice. Describe the end-to-end behavior, not layer-by-layer implementation.
+1. First task — describe the first deliverable for this slice
+2. Second task — describe the next deliverable
+3. Third task — describe the next deliverable
 
 ### Acceptance criteria
 
@@ -93,11 +107,12 @@ A concise description of this vertical slice. Describe the end-to-end behavior, 
 
 ## Phase 2: <Title>
 
-**User stories**: <list from PRD>
+**User stories**: <comma-separated numbers from PRD>
 
 ### What to build
 
-...
+1. First task — ...
+2. Second task — ...
 
 ### Acceptance criteria
 

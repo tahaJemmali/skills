@@ -107,13 +107,16 @@ Re-run the flow if you make additional code or doc edits after the first validat
 After the final close-out, always emit a verdict on its own line:
 
 - `VERDICT: APPROVED` — if both checks passed with no outstanding issues
-- `VERDICT: REMARKS` — if issues were found or remain unresolved, followed by a structured findings block:
+- `VERDICT: REMARKS` — if issues were found or remain unresolved, followed by findings:
 
 ```
-**Findings:**
+VERDICT: REMARKS
+
+FINDINGS_START
 - review-changes: <summary of issues, or "passed">
 - repo-doc-maintainer: <summary of doc recommendations, or "no changes needed">
 - validation commands: <any outstanding commands not yet run, or "all run">
+FINDINGS_END
 ```
 
-The `VERDICT:` line must be the last substantive output.
+The `VERDICT:` line must be the last substantive output. When using `FINDINGS_START`/`FINDINGS_END` delimiters, place them on their own lines.
