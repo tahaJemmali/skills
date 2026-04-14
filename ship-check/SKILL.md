@@ -106,16 +106,25 @@ Re-run the flow if you make additional code or doc edits after the first validat
 
 After the final close-out, always emit a verdict on its own line:
 
-- `VERDICT: APPROVED` — if both checks passed with no outstanding issues
-- `VERDICT: REMARKS` — if issues were found or remain unresolved, followed by findings:
+- `VERDICT: APPROVED` — if both `review-changes` and `repo-doc-maintainer` passed with no outstanding code or documentation issues
+- `VERDICT: REMARKS` — if `review-changes` found actual code issues, or `repo-doc-maintainer` found documentation gaps that were NOT resolved during this run
+
+Use `VERDICT: APPROVED` when:
+- `review-changes` passed (no code findings)
+- `repo-doc-maintainer` either found no changes needed, or the needed changes were applied during this run
+- Validation commands that require external infrastructure (Docker daemon, cloud services, device emulators, etc.) could not be run — this is expected and is NOT a reason to downgrade to REMARKS
+- Plan checkboxes or other bookkeeping was updated during this run — routine maintenance is NOT a finding
+
+Use `VERDICT: REMARKS` only when there are **actual unresolved issues** — real code problems, unfixed doc gaps, or test failures. If the only notes are informational (e.g. "docker build requires manual verification"), that belongs in the close-out summary but does not block approval.
+
+When emitting REMARKS, include findings:
 
 ```
 VERDICT: REMARKS
 
 FINDINGS_START
-- review-changes: <summary of issues, or "passed">
-- repo-doc-maintainer: <summary of doc recommendations, or "no changes needed">
-- validation commands: <any outstanding commands not yet run, or "all run">
+- review-changes: <summary of actual code issues>
+- repo-doc-maintainer: <summary of unresolved doc gaps>
 FINDINGS_END
 ```
 
