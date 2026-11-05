@@ -17,6 +17,7 @@ Three skills in this repo — **grill-me**, **write-a-prd**, and **prd-to-plan**
 | [review-changes](review-changes/SKILL.md) | Review the latest changes against the project's documented guidelines. |
 | [repo-doc-maintainer](repo-doc-maintainer/SKILL.md) | Review recent changes and decide whether project-level documentation needs a high-level update. |
 | [ship-check](ship-check/SKILL.md) | Run the standard post-change validation flow (review-changes + repo-doc-maintainer) before final handoff. |
+| [story-explainer](story-explainer/SKILL.md) | Turn an article, issue, thread or codebase concept into a short animated story (beats, boxes, arrows, UML where it fits) that gives the big picture without telling everything. |
 
 ## Structure
 
@@ -25,7 +26,7 @@ Three skills in this repo — **grill-me**, **write-a-prd**, and **prd-to-plan**
   SKILL.md   ← the skill definition
 ```
 
-Each skill lives in its own directory at repo root and contains a single `SKILL.md` file with YAML frontmatter (`name`, `description`) followed by the skill prompt body.
+Each skill lives in its own directory at repo root and contains a single `SKILL.md` file with YAML frontmatter (`name`, `description`) followed by the skill prompt body. Some skills also ship `references/` (read on demand) and `assets/` (templates).
 
 ## Usage
 

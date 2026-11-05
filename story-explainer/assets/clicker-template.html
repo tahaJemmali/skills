@@ -1,0 +1,644 @@
+<title>One Umbrella Clicker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@800&family=Manrope:wght@600;700;800&family=DM+Mono:wght@400&display=swap">
+<style>
+  /* Layout: one fixed 1920×1080 stage scaled to the window; nine beats, one on screen at a time,
+     advanced by click or keyboard. Single dark look by design: it is shown on a meeting screen. */
+  :root { --ground:#121816; --main:#4fc3a6; --second:#e8ece9; --accent:#e2b04a; --display:"Inter", system-ui, sans-serif; --sans:"Manrope", system-ui, sans-serif; --mono:"DM Mono", ui-monospace, Menlo, monospace; color-scheme: dark; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--ground); color: var(--second); font-family: var(--sans); overflow: hidden; }
+  #wrap { position: fixed; inset: 0; display: grid; place-items: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 12px; box-sizing: border-box; cursor: pointer; user-select: none; }
+  #stage { position: relative; width: 1920px; height: 1080px; transform-origin: center center; overflow: hidden; border-radius: 12px; background: var(--ground); box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+  .scene { position: absolute; inset: 0; visibility: hidden; }
+  .scene.on { visibility: visible; }
+  /* the film's shared look */
+  .ground { position:absolute; inset:0; background:radial-gradient(90% 70% at 50% 110%, color-mix(in srgb, var(--main) 18%, var(--ground)), var(--ground)) }
+  .words { position:absolute; margin:0; display:flex; flex-direction:column; gap:20px } .words > * { margin:0 }
+  .line { font-family:var(--display); font-size:84px; line-height:1.05; font-weight:800; text-wrap: balance } .sub { font-size:36px; line-height:1.3; color:color-mix(in srgb, var(--second) 72%, var(--ground)) }
+  .big { font-family:var(--display); font-size:132px; line-height:1; font-weight:800; text-wrap: balance }
+  .kicker { font-size:26px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; color:var(--main) }
+  .sock { position:absolute; box-sizing:border-box; border:3px solid color-mix(in srgb, var(--second) 55%, var(--ground)); border-radius:14px; background:color-mix(in srgb, var(--ground) 90%, var(--second)); display:flex; align-items:center; justify-content:center; text-align:center; font-weight:700; font-size:30px; line-height:1.15; padding:0 18px; box-shadow:0 10px 30px rgba(0,0,0,.25) }
+  .sock.partner { border-color:color-mix(in srgb, var(--second) 80%, var(--ground)) }
+  .sock.core { border-color:var(--main); color:var(--main) }
+  .sock.customer { border-color:var(--accent) }
+  .sock.bad { border-style:dashed; border-color:var(--accent); color:var(--accent) }
+  .sock.hub { background:color-mix(in srgb, var(--main) 22%, var(--ground)); border-color:var(--main); font-size:38px }
+  .code { font-family:var(--mono); font-size:26px; font-weight:400 }
+  .tag { position:absolute; margin:0; font-family:var(--mono); font-size:24px; padding:6px 14px; border-radius:8px; background:color-mix(in srgb, var(--ground) 86%, var(--second)); color:var(--second); white-space:nowrap }
+  .tag.bad { color:var(--accent) } .tag.good { color:var(--main) }
+  .art { position:absolute; inset:0; width:100%; height:100%; overflow:visible }
+  .cable { fill:none; stroke:color-mix(in srgb, var(--second) 60%, var(--ground)); stroke-width:6; stroke-linecap:round; stroke-linejoin:round }
+  .cable.main { stroke:var(--main) } .cable.bad { stroke:var(--accent) } .cable.thin { stroke-width:4 }
+  .head { fill:color-mix(in srgb, var(--second) 60%, var(--ground)) } .head.main { fill:var(--main) } .head.bad { fill:var(--accent) }
+  .dot { position:absolute; width:18px; height:18px; border-radius:50%; background:var(--main); box-shadow:0 0 0 6px color-mix(in srgb, var(--main) 25%, transparent) }
+  /* presenter chrome */
+  #hud { position: absolute; left: 40px; bottom: 28px; display: flex; align-items: center; gap: 18px; font-size: 22px; color: color-mix(in srgb, var(--second) 55%, var(--ground)); pointer-events: none; }
+  #hud b { color: var(--second); font-weight: 700; }
+  #hud .hint { font-family: var(--mono); font-size: 18px; }
+  #bar { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: color-mix(in srgb, var(--second) 10%, var(--ground)); }
+  #bar i { display: block; height: 100%; width: 0; background: var(--main); }
+  #dots { position: absolute; right: 40px; bottom: 32px; display: flex; gap: 10px; pointer-events: none; }
+  #dots i { width: 14px; height: 14px; border-radius: 50%; background: color-mix(in srgb, var(--second) 18%, var(--ground)); }
+  #dots i.done { background: color-mix(in srgb, var(--main) 55%, var(--ground)); } #dots i.now { background: var(--main); }
+  #start { position: absolute; inset: 0; display: grid; place-items: end center; padding-bottom: 120px; pointer-events: none; }
+  #start span { font-family: var(--mono); font-size: 26px; color: var(--main); padding: 12px 22px; border: 2px solid var(--main); border-radius: 999px; background: color-mix(in srgb, var(--ground) 80%, transparent); }
+  #tools { position: fixed; top: max(12px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); display: flex; gap: 8px; }
+  #tools button { font: inherit; font-size: 13px; font-weight: 700; color: var(--second); background: color-mix(in srgb, var(--second) 12%, var(--ground)); border: 0; border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+  #tools button:focus-visible { outline: 2px solid var(--main); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { #start span { transition: none; } }
+</style>
+
+<div id="tools">
+  <button type="button" id="btn-prev" aria-label="Previous beat">◀</button>
+  <button type="button" id="btn-replay">Replay beat</button>
+  <button type="button" id="btn-next">Next ▶</button>
+  <button type="button" id="btn-full">Fullscreen</button>
+</div>
+<div id="wrap">
+  <div id="stage">
+    <div id="start"><span>Click, Space or → to advance · ← back · R replays</span></div>
+    <div id="hud"><span><b id="hud-n">1</b> / 9</span><span id="hud-name"></span></div>
+    <div id="dots"></div>
+    <div id="bar"><i id="bar-fill"></i></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ---- a small kit: the helpers the scenes were written against ----
+  const clamp01 = x => Math.max(0, Math.min(1, x));
+  const seg = (t, a, b) => clamp01((t - a) / (b - a));
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const eo = x => 1 - Math.pow(1 - x, 3);
+  const ei = x => x * x * x;
+  const eio = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  const eob = (x, s) => { s = s || 1.4; const c = s * 1.0; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+  function rng(seed) { let a = (seed | 0) + 0x6D2B79F5; return function () { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  function h(html) { const tpl = document.createElement('template'); tpl.innerHTML = html.trim(); return tpl.content.firstElementChild; }
+  const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const TextFx = {
+    fadeFromRight(el, t, t0, o) {
+      o = o || {}; const stagger = o.stagger ?? 0.11, dur = o.dur ?? 0.5, dx = o.dx ?? 26;
+      if (!el._fx) { const words = el.textContent.trim().split(/\s+/); el.innerHTML = words.map(w => '<span style="display:inline-block;white-space:pre">' + esc(w) + ' </span>').join(''); el._fx = Array.from(el.children); }
+      el._fx.forEach((sp, i) => { const k = eo(seg(t, t0 + i * stagger, t0 + i * stagger + dur)); sp.style.opacity = k; sp.style.transform = 'translateX(' + (1 - k) * dx + 'px)'; });
+      return t0 + el._fx.length * stagger + dur;
+    }
+  };
+  const SCENES = {};
+  const kit = { seg, lerp, clamp01, eo, ei, eio, eob, rng, h, TextFx, scene(id, def) { SCENES[id] = def; } };
+  window.kit = kit;
+
+  // ---- the film's shared drawing helpers ----
+  window.UI = {
+    px(n) { return Math.round(n) + 'px'; },
+    sock(kit, cls, x, y, w, h, label, extra) { return kit.h('<div class="sock ' + cls + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;' + (extra || '') + '">' + label + '</div>'); },
+    art(kit) { const s = kit.h('<svg class="art" viewBox="0 0 1920 1080"></svg>'); kit.stage.append(s); return s; },
+    cable(svg, d, cls, end) {
+      const NS = 'http://www.w3.org/2000/svg';
+      const p = document.createElementNS(NS, 'path');
+      p.setAttribute('d', d); p.setAttribute('class', 'cable ' + (cls || ''));
+      svg.append(p);
+      let len = 0, head = null;
+      try { len = p.getTotalLength(); } catch (e) { len = 1000; }
+      if (end) { head = document.createElementNS(NS, 'polygon'); head.setAttribute('points', '0,-11 20,0 0,11'); head.setAttribute('class', 'head ' + (cls || '')); svg.append(head); }
+      const bad = (cls || '').indexOf('bad') >= 0;
+      return { el: p, len,
+        draw(k) {
+          k = Math.max(0, Math.min(1, k));
+          p.style.opacity = k > 0 ? 1 : 0;
+          if (bad && k >= 1) { p.style.strokeDasharray = '14 12'; p.style.strokeDashoffset = 0; }
+          else { p.style.strokeDasharray = len; p.style.strokeDashoffset = len * (1 - k); }
+          if (head) {
+            const q = p.getPointAtLength(len * k), r = p.getPointAtLength(Math.max(0, len * k - 4));
+            const a = Math.atan2(q.y - r.y, q.x - r.x) * 180 / Math.PI;
+            head.setAttribute('transform', 'translate(' + q.x + ' ' + q.y + ') rotate(' + a + ')');
+            head.style.opacity = k > 0.08 ? 1 : 0;
+          }
+        } };
+    },
+    link(svg, a, b, cls) {
+      const x1 = a.x + a.w, y1 = a.y + a.h / 2, x2 = b.x, y2 = b.y + b.h / 2, m = (x1 + x2) / 2;
+      return UI.cable(svg, 'M' + x1 + ' ' + y1 + ' C' + m + ' ' + y1 + ' ' + m + ' ' + y2 + ' ' + (x2 - 22) + ' ' + y2, cls, true);
+    }
+  };
+
+  // ---- beat 1: a partner knocks ----
+  (function () {
+    const { seg, eo, eob, lerp, TextFx } = kit;
+    kit.scene('knock', {
+      init(kit) {
+        kit.stage.append(kit.h('<div class="ground"></div>'));
+        kit.stage.append(kit.h('<div class="words" style="left:140px;top:130px;width:1400px"><p class="kicker knock-kick">A story in nine beats</p><h2 class="line">One umbrella for partners</h2><p class="sub knock-sub">It started with a new partner knocking on the door</p></div>'));
+        const B = this.B = { w: { x: 180, y: 520, w: 320, h: 120 }, e: { x: 800, y: 520, w: 320, h: 120 }, c: { x: 1420, y: 520, w: 320, h: 120 } };
+        this.svg = UI.art(kit);
+        this.c1 = UI.link(this.svg, B.w, B.e, 'main');
+        this.c2 = UI.cable(this.svg, 'M1120 552 C1270 552 1270 552 1398 552', 'main', true);
+        this.c3 = UI.cable(this.svg, 'M1420 606 C1270 606 1270 606 1142 606', 'main', true);
+        this.c4 = UI.cable(this.svg, 'M800 606 C650 606 650 606 522 606', 'bad', true);
+        this.socks = {};
+        this.socks.w = UI.sock(kit, 'partner', B.w.x, B.w.y, B.w.w, B.w.h, 'New partner');
+        this.socks.e = UI.sock(kit, 'core', B.e.x, B.e.y, B.e.w, B.e.h, 'Platform');
+        this.socks.c = UI.sock(kit, 'customer', B.c.x, B.c.y, B.c.w, B.c.h, 'Customer');
+        for (const k in this.socks) kit.stage.append(this.socks[k]);
+        this.tags = [
+          kit.h('<p class="tag good" style="left:540px;top:470px">send this template</p>'),
+          kit.h('<p class="tag good" style="left:1180px;top:470px">template</p>'),
+          kit.h('<p class="tag good" style="left:1225px;top:630px">tap</p>'),
+          kit.h('<p class="tag bad" style="left:430px;top:630px">and the tap back, with my ids?</p>')
+        ];
+        for (const g of this.tags) kit.stage.append(g);
+        this.kick = kit.stage.querySelector('.knock-kick').style;
+        this.sub = kit.stage.querySelector('.knock-sub').style;
+        this.line = kit.stage.querySelector('.line');
+      },
+      render(t) {
+        TextFx.fadeFromRight(this.line, t, -0.5);
+        this.kick.opacity = eo(seg(t, 0.2, 0.8));
+        this.sub.opacity = eo(seg(t, 1.0, 1.6));
+        const rise = (el, t0) => { const k = eob(seg(t, t0, t0 + 0.8), 1.5); el.style.opacity = seg(t, t0, t0 + 0.3); el.style.transform = 'translateY(' + lerp(90, 0, k) + 'px)'; };
+        rise(this.socks.w, 2.6); rise(this.socks.e, 2.9); rise(this.socks.c, 3.2);
+        this.c1.draw(eo(seg(t, 3.8, 4.6)));
+        this.c2.draw(eo(seg(t, 4.8, 5.4)));
+        this.c3.draw(eo(seg(t, 5.6, 6.2)));
+        this.c4.draw(eo(seg(t, 6.5, 7.4)));
+        const show = (i, t0) => { this.tags[i].style.opacity = eo(seg(t, t0, t0 + 0.35)); };
+        show(0, 4.3); show(1, 5.2); show(2, 6.0); show(3, 7.1);
+        const wob = Math.sin(t * 2.1) * 1.5;
+        this.tags[3].style.transform = 'rotate(' + (t > 7.1 ? wob : 0) + 'deg)';
+      }
+    });
+  })();
+
+  // ---- beat 2: three loops today ----
+  (function () {
+    const { seg, eo, eob, lerp, TextFx } = kit;
+    const ROWS = [
+      { y: 250, s: 1.0, p: 'Order system', send: 'template + order id', mem: 'remembers an order, by phone', fwd: 'location template', back: 'location + order id', cls: '' },
+      { y: 520, s: 4.6, p: 'Property app', send: 'event, 16 kinds', mem: 'remembers a request, by phone', fwd: 'template + buttons', back: 'POST the tap, via a hand-built flow', cls: '' },
+      { y: 790, s: 8.2, p: 'Marketing tools', send: 'template, via the relay', mem: 'remembers nothing', fwd: 'template', back: 'event, no ids', cls: 'bad' }
+    ];
+    kit.scene('three-loops', {
+      init(kit) {
+        kit.stage.append(kit.h('<div class="ground"></div>'));
+        kit.stage.append(kit.h('<div class="words" style="left:140px;top:30px;width:1500px;gap:6px"><p class="kicker">Today</p><h2 class="line" style="font-size:72px">Three loops, three memories</h2></div>'));
+        this.svg = UI.art(kit);
+        this.rows = ROWS.map(r => {
+          const P = { x: 140, y: r.y, w: 320, h: 96 }, E = { x: 800, y: r.y, w: 320, h: 96 }, C = { x: 1460, y: r.y, w: 320, h: 96 };
+          const o = { r,
+            socks: [UI.sock(kit, 'partner', P.x, P.y, P.w, P.h, r.p), UI.sock(kit, r.cls ? 'bad' : 'core', E.x, E.y, E.w, E.h, 'Platform'), UI.sock(kit, 'customer', C.x, C.y, C.w, C.h, 'Customer')],
+            c1: UI.link(this.svg, P, E, r.cls || 'main'),
+            c2: UI.link(this.svg, E, C, r.cls || 'main'),
+            c3: UI.cable(this.svg, 'M1620 ' + r.y + ' C1620 ' + (r.y - 95) + ' 300 ' + (r.y - 95) + ' 300 ' + (r.y - 4), r.cls, true),
+            tags: [
+              kit.h('<p class="tag ' + (r.cls || 'good') + '" style="left:470px;top:' + (r.y + 104) + 'px">' + r.send + '</p>'),
+              kit.h('<p class="tag ' + (r.cls || '') + '" style="left:812px;top:' + (r.y + 104) + 'px">' + r.mem + '</p>'),
+              kit.h('<p class="tag ' + (r.cls || 'good') + '" style="left:1150px;top:' + (r.y + 104) + 'px">' + r.fwd + '</p>'),
+              kit.h('<p class="tag ' + (r.cls || '') + '" style="left:700px;top:' + (r.y - 106) + 'px">' + r.back + '</p>')
+            ] };
+          o.socks.forEach(s => kit.stage.append(s)); o.tags.forEach(g => kit.stage.append(g));
+          return o;
+        });
+        this.foot = kit.h('<p class="sub" style="position:absolute;left:140px;top:990px;width:1600px">Same job. Three wirings. Every new partner would add a fourth.</p>');
+        kit.stage.append(this.foot);
+        this.line = kit.stage.querySelector('.line');
+      },
+      render(t) {
+        TextFx.fadeFromRight(this.line, t, -0.4);
+        for (const o of this.rows) {
+          const s = o.r.s;
+          o.socks.forEach((el, i) => { const t0 = s + i * 0.15, k = eob(seg(t, t0, t0 + 0.7), 1.5); el.style.opacity = seg(t, t0, t0 + 0.25); el.style.transform = 'translateY(' + lerp(60, 0, k) + 'px)'; });
+          o.c1.draw(eo(seg(t, s + 0.5, s + 1.1)));
+          o.c2.draw(eo(seg(t, s + 1.4, s + 1.9)));
+          o.c3.draw(eo(seg(t, s + 2.1, s + 3.0)));
+          const at = [s + 0.9, s + 1.2, s + 1.7, s + 2.6];
+          o.tags.forEach((g, i) => { const k = eo(seg(t, at[i], at[i] + 0.35)); g.style.opacity = k; g.style.transform = 'translateY(' + lerp(10, 0, k) + 'px)'; });
+          o.tags[1].style.transform += ' translateY(' + (Math.sin(t * 1.7 + o.r.y) * 2) + 'px)';
+        }
+        this.foot.style.opacity = eo(seg(t, 11.0, 11.6));
+      }
+    });
+  })();
+
+  // ---- beat 3: first idea ----
+  (function () {
+    const { seg, eo, eob, lerp, TextFx } = kit;
+    kit.scene('first-idea', {
+      init(kit) {
+        kit.stage.append(kit.h('<div class="ground"></div>'));
+        kit.stage.append(kit.h('<div class="words" style="left:140px;top:110px;width:1500px"><p class="kicker">First idea</p><h2 class="line">Add one row at send time</h2><p class="sub fi-sub">Remember who asked, hand the answer back with their ids</p></div>'));
+        const B = this.B = { p: { x: 180, y: 520, w: 320, h: 120 }, e: { x: 800, y: 520, w: 320, h: 120 }, c: { x: 1420, y: 520, w: 320, h: 120 } };
+        this.svg = UI.art(kit);
+        this.c1 = UI.link(this.svg, B.p, B.e, 'main');
+        this.c2 = UI.cable(this.svg, 'M1120 552 C1270 552 1270 552 1398 552', 'main', true);
+        this.c3 = UI.cable(this.svg, 'M1420 606 C1270 606 1270 606 1142 606', 'main', true);
+        this.c4 = UI.cable(this.svg, 'M800 606 C650 606 650 606 522 606', 'main', true);
+        this.socks = [UI.sock(kit, 'partner', B.p.x, B.p.y, B.p.w, B.p.h, 'Partner'), UI.sock(kit, 'core', B.e.x, B.e.y, B.e.w, B.e.h, 'Platform'), UI.sock(kit, 'customer', B.c.x, B.c.y, B.c.w, B.c.h, 'Customer')];
+        this.socks.forEach(s => kit.stage.append(s));
+        this.row = UI.sock(kit, 'hub', 700, 690, 520, 90, 'subscription row', 'font-size:30px');
+        kit.stage.append(this.row);
+        this.rowSub = kit.h('<p class="tag good" style="left:640px;top:800px">who asked · their ids · what to wait for · expiry</p>');
+        kit.stage.append(this.rowSub);
+        this.tags = [
+          kit.h('<p class="tag good" style="left:520px;top:470px">template + subscribe</p>'),
+          kit.h('<p class="tag good" style="left:1150px;top:470px">a tiny id in each button</p>'),
+          kit.h('<p class="tag good" style="left:1180px;top:630px">the tap carries the id</p>'),
+          kit.h('<p class="tag good" style="left:470px;top:630px">reaction + your ids</p>')
+        ];
+        this.tags.forEach(g => kit.stage.append(g));
+        this.dot = kit.h('<div class="dot" style="left:0;top:0"></div>');
+        kit.stage.append(this.dot);
+        this.foot = kit.h('<div class="words" style="left:140px;top:930px;width:1600px;gap:8px"><p class="sub fi-neat" style="color:var(--second);font-weight:700">Neat. One row. Done?</p><p class="sub fi-but">We looked deeper before building it.</p></div>');
+        kit.stage.append(this.foot);
+        this.line = kit.stage.querySelector('.line');
+        this.sub = kit.stage.querySelector('.fi-sub').style;
+        this.neat = kit.stage.querySelector('.fi-neat').style;
+        this.but = kit.stage.querySelector('.fi-but').style;
+      },
+      render(t) {
+        TextFx.fadeFromRight(this.line, t, -0.4);
+        this.sub.opacity = eo(seg(t, 0.8, 1.4));
+        this.socks.forEach((el, i) => { const t0 = 1.4 + i * 0.2, k = eob(seg(t, t0, t0 + 0.7), 1.5); el.style.opacity = seg(t, t0, t0 + 0.25); el.style.transform = 'translateY(' + lerp(70, 0, k) + 'px)'; });
+        this.c1.draw(eo(seg(t, 2.2, 2.9)));
+        const rk = eob(seg(t, 3.0, 3.7), 1.7);
+        this.row.style.opacity = seg(t, 3.0, 3.2);
+        this.row.style.transform = 'scale(' + lerp(0.6, 1, rk) + ')';
+        this.rowSub.style.opacity = eo(seg(t, 3.5, 3.9));
+        this.c2.draw(eo(seg(t, 3.9, 4.5)));
+        const dk = eo(seg(t, 4.4, 5.3));
+        const q = this.c2.el.getPointAtLength(this.c2.len * dk);
+        this.dot.style.left = (q.x - 9) + 'px'; this.dot.style.top = (q.y - 9) + 'px';
+        this.dot.style.opacity = t > 4.4 && t < 5.4 ? 1 : 0;
+        this.c3.draw(eo(seg(t, 5.5, 6.1)));
+        this.c4.draw(eo(seg(t, 6.4, 7.2)));
+        const at = [2.7, 4.5, 5.9, 7.0];
+        this.tags.forEach((g, i) => { g.style.opacity = eo(seg(t, at[i], at[i] + 0.35)); });
+        this.neat.opacity = eo(seg(t, 7.5, 8.0));
+        this.but.opacity = eo(seg(t, 8.2, 8.7));
+        this.row.style.boxShadow = '0 0 ' + (24 + Math.sin(t * 2.4) * 10) + 'px color-mix(in srgb, var(--main) 35%, transparent)';
+      }
+    });
+  })();
+
+  // ---- beat 4: we looked deeper ----
+  (function () {
+    const { seg, eo, eob, lerp, TextFx } = kit;
+    const NAMES = ['webhook node', 'keyword trigger', 'form trigger', 'operator form', 'events & actions', 'inbound actions', 'webhook builder', 'event dispatcher', 'trigger flag', 'FIRE_PARTNER_EVENT', 'portal flows', 'button actions', 'campaign overrides', 'automation rules', 'first-response timer', 'auto-close cron', 'activity log'];
+    const ROWS = [[140, 500, 860, 1220, 1580], [320, 680, 1040, 1400], [140, 500, 860, 1220, 1580], [320, 680, 1040]];
+    kit.scene('deeper', {
+      init(kit) {
+        kit.stage.append(kit.h('<div class="ground"></div>'));
+        this.band = kit.h('<div style="position:absolute;top:0;width:260px;height:1080px;background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--main) 22%, transparent), transparent)"></div>');
+        kit.stage.append(this.band);
+        kit.stage.append(kit.h('<div class="words" style="left:140px;top:60px;width:1200px;gap:6px"><p class="kicker">Deep dive</p><h2 class="line" style="font-size:72px">We looked deeper</h2></div>'));
+        this.count = kit.h('<p class="big" style="position:absolute;right:140px;top:40px;margin:0;color:var(--main);font-variant-numeric:tabular-nums">0</p>');
+        kit.stage.append(this.count);
+        const rnd = kit.rng(11);
+        this.boxes = [];
+        let i = 0;
+        ROWS.forEach((xs, r) => xs.forEach(x => {
+          const y = 250 + r * 165 + (rnd() - 0.5) * 24, jx = x + (rnd() - 0.5) * 24;
+          const el = UI.sock(kit, '', jx, y, 280, 68, NAMES[i], 'font-size:24px;font-weight:600');
+          kit.stage.append(el);
+          const cx = jx + 140;
+          this.boxes.push({ el, cx, t0: 0.8 + 4.4 * ((cx + 300) / 2300), rot: (rnd() - 0.5) * 4, ph: rnd() * 6 });
+          i++;
+        }));
+        this.foot = kit.h('<p class="sub" style="position:absolute;left:140px;top:950px;width:1640px;color:var(--second);font-weight:700">Seventeen ways to say: something happened in a chat, now react.</p>');
+        kit.stage.append(this.foot);
+        this.line = kit.stage.querySelector('.line');
+      },
+      render(t) {
+        TextFx.fadeFromRight(this.line, t, -0.4);
+        const bx = lerp(-300, 2000, seg(t, 0.8, 5.4));
+        this.band.style.left = (bx - 130) + 'px';
+        this.band.style.opacity = t > 0.6 && t < 5.6 ? 1 : 0;
+        let n = 0;
+        for (const b of this.boxes) {
+          const k = eob(seg(t, b.t0, b.t0 + 0.6), 1.6);
+          if (t >= b.t0) n++;
+          b.el.style.opacity = seg(t, b.t0, b.t0 + 0.2);
+          b.el.style.transform = 'scale(' + lerp(0.5, 1, k) + ') rotate(' + (b.rot + Math.sin(t * 1.3 + b.ph) * 1.2) + 'deg) translateY(' + (Math.sin(t * 0.9 + b.ph) * 3) + 'px)';
+        }
+        this.count.textContent = String(n);
+        this.count.style.transform = 'scale(' + (1 + 0.08 * Math.max(0, 1 - ((t * 10) % 10) / 10) * (n > 0 && n < 17 ? 1 : 0)) + ')';
+        this.foot.style.opacity = eo(seg(t, 5.9, 6.5));
+        this.foot.style.transform = 'translateY(' + lerp(12, 0, eo(seg(t, 5.9, 6.5))) + 'px)';
+      }
+    });
+  })();
+
+  // ---- beat 5: three exits ----
+  (function () {
+    const { seg, eo, eob, lerp, TextFx } = kit;
+    const DOORS = [
+      { y: 250, s: 1.8, name: 'the event bus', what: 'messages · started · closed' },
+      { y: 480, s: 4.0, name: 'a direct queue add', what: 'assigned · unresponded' },
+      { y: 710, s: 6.2, name: 'walker-side ports', what: 'form reply · webhook node' }
+    ];
+    kit.scene('exits', {
+      init(kit) {
+        kit.stage.append(kit.h('<div class="ground"></div>'));
+        kit.stage.append(kit.h('<div class="words" style="left:140px;top:60px;width:1500px;gap:6px"><p class="kicker">What we found, one</p><h2 class="line" style="font-size:72px">Three exits to the relay</h2></div>'));
+        this.svg = UI.art(kit);
+        const S = { x: 140, y: 480, w: 320, h: 120 }, R = { x: 1460, y: 480, w: 320, h: 120 };
+        this.src = UI.sock(kit, 'customer', S.x, S.y, S.w, S.h, 'a chat fact');
+        this.relay = UI.sock(kit, 'partner', R.x, R.y, R.w, R.h, 'Relay to partner');
+        this.doors = DOORS.map(d => {
+          const M = { x: 760, y: d.y, w: 400, h: 110 };
+          return { d, box: UI.sock(kit, 'core', M.x, M.y, M.w, M.h, d.name), c1: UI.link(this.svg, S, M, 'main'), c2: UI.link(this.svg, M, R, 'main'),
+            tag: kit.h('<p class="tag" style="left:762px;top:' + (d.y + 118) + 'px">' + d.what + '</p>') };
+        });
+        kit.stage.append(this.src, this.relay);
+        this.doors.forEach(o => kit.stage.append(o.box, o.tag));
+        this.names = kit.h('<p class="tag bad" style="left:1170px;top:388px">same moment, two names</p>');
+        kit.stage.append(this.names);
+        this.foot = kit.h('<p class="sub" style="position:absolute;left:140px;top:940px;width:1640px;color:var(--second);font-weight:700">One fact, three doors out. No single place shows what leaves the platform.</p>');
+        kit.stage.append(this.foot);
+        this.line = kit.stage.querySelector('.line');
+      },
+      render(t) {
+        TextFx.fadeFromRight(this.line, t, -0.4);
+        const rise = (el, t0) => { const k = eob(seg(t, t0, t0 + 0.7), 1.5); el.style.opacity = seg(t, t0, t0 + 0.25); el.style.transform = 'translateY(' + lerp(60, 0, k) + 'px)'; };
+        rise(this.src, 0.9); rise(this.relay, 1.1);
+        for (const o of this.doors) { const s = o.d.s; rise(o.box, s); o.c1.draw(eo(seg(t, s + 0.4, s + 1.1))); o.c2.draw(eo(seg(t, s + 1.1, s + 1.7))); o.tag.style.opacity = eo(seg(t, s + 0.9, s + 1.3)); }
+        this.src.style.boxShadow = '0 0 ' + (18 + Math.sin(t * 2.2) * 8) + 'px color-mix(in srgb, var(--accent) 40%, transparent)';
+        this.names.style.opacity = eo(seg(t, 8.6, 9.1));
+        this.names.style.transform = 'rotate(' + (Math.sin(t * 2) * 1.5) + 'deg)';
+        this.foot.style.opacity = eo(seg(t, 8.0, 8.6));
+      }
+    });
+  })();
+
+  // ---- beat 6: three doors in ----
+  (function () {
+    const { seg, eo, eob, lerp, TextFx } = kit;
+    const DOORS = [
+      { y: 250, s: 1.8, name: 'relay inbound action', what: 'email · CRM tools' },
+      { y: 480, s: 3.8, name: 'event-dispatcher registry', what: 'property · booking · store apps' },
+      { y: 710, s: 5.8, name: 'public endpoint + trigger flag', what: 'order system' }
+    ];
+    kit.scene('doors-in', {
+      init(kit) {
+        kit.stage.append(kit.h('<div class="ground"></div>'));
+        kit.stage.append(kit.h('<div class="words" style="left:140px;top:60px;width:1500px;gap:6px"><p class="kicker">What we found, two</p><h2 class="line" style="font-size:72px">Three doors in</h2></div>'));
+        this.svg = UI.art(kit);
+        const P = { x: 140, y: 480, w: 320, h: 120 }, W = { x: 1460, y: 480, w: 320, h: 120 };
+        this.src = UI.sock(kit, 'partner', P.x, P.y, P.w, P.h, 'Partner: send a template');
+        this.dst = UI.sock(kit, 'customer', W.x, W.y, W.w, W.h, 'WhatsApp send');
+        this.doors = DOORS.map(d => {
+          const M = { x: 700, y: d.y, w: 520, h: 110 };
+          return { d, box: UI.sock(kit, 'core', M.x, M.y, M.w, M.h, d.name, 'font-size:28px'), c1: UI.link(this.svg, P, M, 'main'), c2: UI.link(this.svg, M, W, 'main'),
+            tag: kit.h('<p class="tag" style="left:702px;top:' + (d.y + 118) + 'px">' + d.what + '</p>') };
+        });
+        kit.stage.append(this.src, this.dst);
+        this.doors.forEach(o => kit.stage.append(o.box, o.tag));
+        this.foot = kit.h('<p class="sub" style="position:absolute;left:140px;top:940px;width:1640px;color:var(--second);font-weight:700">Three entrances for one request. Three rulebooks to keep in sync.</p>');
+        kit.stage.append(this.foot);
+        this.line = kit.stage.querySelector('.line');
+      },
+      render(t) {
+        TextFx.fadeFromRight(this.line, t, -0.4);
+        const rise = (el, t0) => { const k = eob(seg(t, t0, t0 + 0.7), 1.5); el.style.opacity = seg(t, t0, t0 + 0.25); el.style.transform = 'translateY(' + lerp(60, 0, k) + 'px)'; };
+        rise(this.src, 0.9); rise(this.dst, 1.1);
+        for (const o of this.doors) { const s = o.d.s; rise(o.box, s); o.c1.draw(eo(seg(t, s + 0.4, s + 1.0))); o.c2.draw(eo(seg(t, s + 1.0, s + 1.6))); o.tag.style.opacity = eo(seg(t, s + 0.9, s + 1.3)); }
+        this.src.style.boxShadow = '0 0 ' + (18 + Math.sin(t * 2.2) * 8) + 'px color-mix(in srgb, var(--second) 30%, transparent)';
+        this.foot.style.opacity = eo(seg(t, 7.6, 8.2));
+      }
+    });
+  })();
+
+  // ---- beat 7: dead and doubled ----
+  (function () {
+    const { seg, eo, eob, lerp, TextFx } = kit;
+    kit.scene('dead-wires', {
+      init(kit) {
+        kit.stage.append(kit.h('<div class="ground"></div>'));
+        kit.stage.append(kit.h('<div class="words" style="left:140px;top:60px;width:1500px;gap:6px"><p class="kicker">What we found, three</p><h2 class="line" style="font-size:72px">Doubled, dead and empty</h2></div>'));
+        this.svg = UI.art(kit);
+        this.n = UI.sock(kit, 'core', 140, 420, 300, 100, 'webhook node');
+        this.p1 = UI.sock(kit, 'partner', 160, 640, 260, 90, 'partner', 'font-size:26px');
+        this.d1 = UI.cable(this.svg, 'M230 520 C230 580 230 580 230 636', 'main', true);
+        this.d2 = UI.cable(this.svg, 'M350 520 C350 580 350 580 350 636', 'main', true);
+        this.t1 = kit.h('<p class="tag bad" style="left:140px;top:560px">HTTP call + relay event: twice</p>');
+        this.rows = [0, 1, 2].map(i => UI.sock(kit, '', 760, 400 + i * 96, 400, 76, 'Webhook tab row ' + (i + 1), 'font-size:24px;font-weight:600'));
+        this.d3 = UI.cable(this.svg, 'M1160 438 C1230 438 1260 520 1300 560', 'bad', false);
+        this.t2 = kit.h('<p class="tag bad" style="left:1180px;top:580px">never fires</p>');
+        this.x2 = kit.h('<p class="big" style="position:absolute;left:1290px;top:520px;margin:0;font-size:72px;color:var(--accent)">×</p>');
+        this.f1 = UI.sock(kit, 'partner', 1420, 400, 360, 76, 'FIRE_EMAIL_EVENT', 'font-size:22px');
+        this.f2 = UI.sock(kit, 'partner', 1420, 496, 360, 76, 'FIRE_CRM_EVENT', 'font-size:22px');
+        this.e1 = UI.sock(kit, 'bad', 1480, 680, 240, 90, 'nothing here', 'font-size:24px');
+        this.d4 = UI.cable(this.svg, 'M1600 572 C1600 620 1600 620 1600 676', 'bad', true);
+        this.t3 = kit.h('<p class="tag bad" style="left:1440px;top:790px">labels only, no branch</p>');
+        kit.stage.append(this.n, this.p1, this.t1, this.t2, this.x2, this.f1, this.f2, this.e1, this.t3);
+        this.rows.forEach(r => kit.stage.append(r));
+        this.foot = kit.h('<p class="sub" style="position:absolute;left:140px;top:940px;width:1640px;color:var(--second);font-weight:700">Nobody noticed, because nobody could see it all in one place.</p>');
+        kit.stage.append(this.foot);
+        this.line = kit.stage.querySelector('.line');
+      },
+      render(t) {
+        TextFx.fadeFromRight(this.line, t, -0.4);
+        const rise = (el, t0) => { const k = eob(seg(t, t0, t0 + 0.7), 1.5); el.style.opacity = seg(t, t0, t0 + 0.25); el.style.transform = 'translateY(' + lerp(50, 0, k) + 'px)'; };
+        rise(this.n, 1.0); rise(this.p1, 1.3);
+        this.d1.draw(eo(seg(t, 1.7, 2.2))); this.d2.draw(eo(seg(t, 2.0, 2.5)));
+        this.t1.style.opacity = eo(seg(t, 2.5, 2.9));
+        this.rows.forEach((r, i) => rise(r, 3.3 + i * 0.15));
+        this.d3.draw(eo(seg(t, 3.9, 4.5)));
+        this.x2.style.opacity = eo(seg(t, 4.5, 4.8));
+        this.x2.style.transform = 'scale(' + lerp(1.6, 1, eob(seg(t, 4.5, 5.0), 1.6)) + ')';
+        this.t2.style.opacity = eo(seg(t, 4.7, 5.1));
+        rise(this.f1, 5.4); rise(this.f2, 5.6);
+        this.d4.draw(eo(seg(t, 6.0, 6.6)));
+        rise(this.e1, 6.5);
+        this.t3.style.opacity = eo(seg(t, 6.9, 7.3));
+        this.foot.style.opacity = eo(seg(t, 7.2, 7.8));
+        const w = Math.sin(t * 2.5) * 1.4;
+        this.t1.style.transform = 'rotate(' + w + 'deg)'; this.t2.style.transform = 'rotate(' + (-w) + 'deg)'; this.t3.style.transform = 'rotate(' + w + 'deg)';
+      }
+    });
+  })();
+
+  // ---- beat 8: one umbrella ----
+  (function () {
+    const { seg, eo, eob, lerp, TextFx } = kit;
+    const PARTNERS = ['Order system', 'Property app', 'Email tool', 'CRM tool', 'New partner'];
+    const FACTS = ['customer message', 'button tap', 'location shared', 'form reply', 'order placed', 'node reached', 'template sent'];
+    kit.scene('umbrella', {
+      init(kit) {
+        kit.stage.append(kit.h('<div class="ground"></div>'));
+        kit.stage.append(kit.h('<div class="words" style="left:140px;top:60px;width:1500px;gap:6px"><p class="kicker">Recommendation</p><h2 class="line" style="font-size:72px">One umbrella, three moves</h2></div>'));
+        this.svg = UI.art(kit);
+        const rnd = kit.rng(5);
+        this.tangle = [];
+        for (let i = 0; i < 9; i++) {
+          const y1 = 300 + rnd() * 420, y2 = 280 + rnd() * 480, x2 = 900 + rnd() * 800;
+          this.tangle.push(UI.cable(this.svg, 'M440 ' + y1 + ' C' + (600 + rnd() * 500) + ' ' + (200 + rnd() * 700) + ' ' + (700 + rnd() * 600) + ' ' + (200 + rnd() * 700) + ' ' + x2 + ' ' + y2, 'thin', true));
+        }
+        this.today = kit.h('<p class="tag bad" style="left:700px;top:900px">today: every partner wired its own way</p>');
+        const P = this.P = PARTNERS.map((n, i) => ({ x: 140, y: 300 + i * 90, w: 300, h: 72 }));
+        this.parts = PARTNERS.map((n, i) => UI.sock(kit, 'partner', P[i].x, P[i].y, P[i].w, P[i].h, n, 'font-size:26px'));
+        const IN = { x: 700, y: 260, w: 520, h: 96 }, SP = { x: 700, y: 400, w: 520, h: 330 }, OUT = { x: 700, y: 770, w: 520, h: 96 }, C = { x: 1480, y: 400, w: 300, h: 120 };
+        this.din = UI.sock(kit, 'hub', IN.x, IN.y, IN.w, IN.h, 'one door in: inbound actions', 'font-size:30px');
+        this.spine = UI.sock(kit, 'hub', SP.x, SP.y, SP.w, SP.h, '', 'align-items:flex-start;padding-top:14px');
+        this.spine.append(kit.h('<p style="margin:0;font-size:30px">one spine: the event bus</p>'));
+        this.facts = FACTS.map((f, i) => kit.h('<p class="tag good" style="left:' + (730 + (i % 2) * 250) + 'px;top:' + (470 + Math.floor(i / 2) * 60) + 'px">' + f + '</p>'));
+        this.dout = UI.sock(kit, 'hub', OUT.x, OUT.y, OUT.w, OUT.h, 'one door out: stream to relay', 'font-size:30px');
+        this.cust = UI.sock(kit, 'customer', C.x, C.y, C.w, C.h, 'Customer');
+        this.cin = P.map(b => UI.link(this.svg, b, IN, 'main'));
+        this.c2 = UI.cable(this.svg, 'M1220 308 C1400 308 1400 440 1458 440', 'main', true);
+        this.c3 = UI.cable(this.svg, 'M1480 490 C1380 490 1380 565 1242 565', 'main', true);
+        this.c4 = UI.cable(this.svg, 'M960 730 L960 748', 'main', true);
+        this.c5 = UI.cable(this.svg, 'M700 818 C600 818 560 818 462 818', 'main', true);
+        this.tags = [
+          kit.h('<p class="tag good" style="left:1250px;top:330px">template + subscribe</p>'),
+          kit.h('<p class="tag good" style="left:1250px;top:580px">tap · location · reply</p>'),
+          kit.h('<p class="tag good" style="left:180px;top:850px">reaction + their ids</p>')
+        ];
+        this.moves = kit.h('<div class="words" style="left:1340px;top:620px;width:520px;gap:14px"><p class="kicker um-m1">move one: raise every fact once</p><p class="kicker um-m2">move two: partners ask one way</p><p class="kicker um-m3">move three: partners hear one way</p></div>');
+        this.foot = kit.h('<p class="sub" style="position:absolute;left:140px;top:960px;width:1700px;color:var(--second);font-weight:700">Every fact raised once. Every partner wired once. Subscriptions ride the same path.</p>');
+        kit.stage.append(this.today, this.din, this.spine, this.dout, this.cust, this.moves, this.foot);
+        this.parts.forEach(p => kit.stage.append(p)); this.facts.forEach(f => kit.stage.append(f)); this.tags.forEach(g => kit.stage.append(g));
+        this.m = [1, 2, 3].map(i => kit.stage.querySelector('.um-m' + i).style);
+        this.line = kit.stage.querySelector('.line');
+      },
+      render(t) {
+        TextFx.fadeFromRight(this.line, t, -0.4);
+        const fade = 1 - eo(seg(t, 4.2, 5.0));
+        this.tangle.forEach((c, i) => { c.draw(eo(seg(t, 0.3 + i * 0.15, 0.9 + i * 0.15))); c.el.style.opacity = Math.min(parseFloat(c.el.style.opacity || 0), fade); });
+        this.today.style.opacity = eo(seg(t, 1.6, 2.0)) * fade;
+        const rise = (el, t0) => { const k = eob(seg(t, t0, t0 + 0.7), 1.5); el.style.opacity = seg(t, t0, t0 + 0.25); el.style.transform = 'translateY(' + lerp(50, 0, k) + 'px)'; };
+        this.parts.forEach((p, i) => rise(p, 5.0 + i * 0.12));
+        this.m[0].opacity = eo(seg(t, 6.0, 6.4)); rise(this.spine, 6.0);
+        this.facts.forEach((f, i) => { f.style.opacity = eo(seg(t, 6.7 + i * 0.25, 7.0 + i * 0.25)); });
+        this.m[1].opacity = eo(seg(t, 9.0, 9.4)); rise(this.din, 9.0); rise(this.cust, 9.2);
+        this.cin.forEach((c, i) => c.draw(eo(seg(t, 9.4 + i * 0.1, 10.0 + i * 0.1))));
+        this.c2.draw(eo(seg(t, 10.3, 10.9))); this.tags[0].style.opacity = eo(seg(t, 10.7, 11.0));
+        this.c3.draw(eo(seg(t, 10.9, 11.5))); this.tags[1].style.opacity = eo(seg(t, 11.3, 11.6));
+        this.m[2].opacity = eo(seg(t, 11.7, 12.1)); rise(this.dout, 11.7);
+        this.c4.draw(eo(seg(t, 12.1, 12.4))); this.c5.draw(eo(seg(t, 12.4, 13.0)));
+        this.tags[2].style.opacity = eo(seg(t, 12.9, 13.2));
+        this.foot.style.opacity = eo(seg(t, 13.6, 14.2));
+        this.spine.style.boxShadow = '0 0 ' + (24 + Math.sin(t * 2.2) * 10) + 'px color-mix(in srgb, var(--main) 35%, transparent)';
+      }
+    });
+  })();
+
+  // ---- beat 9: why this one ----
+  (function () {
+    const { seg, eo, eob, lerp, TextFx } = kit;
+    const CARDS = [
+      { t: 'Built on parts we already have', d: 'button payloads · tap handler · relay', s: 0.8 },
+      { t: 'A new partner is one row + one spec', d: 'a descriptor row here, a vendor row in the relay', s: 2.0 },
+      { t: 'Nothing changes for partners', d: 'they call the same URLs, they get the same events', s: 3.2 }
+    ];
+    const STEPS = ['1 · New partner first', '2 · Property app taps', '3 · Order system last, if at all'];
+    kit.scene('why', {
+      init(kit) {
+        kit.stage.append(kit.h('<div class="ground"></div>'));
+        this.head = kit.h('<div class="words" style="left:140px;top:60px;width:1500px;gap:6px"><p class="kicker">Why this one</p><h2 class="line" style="font-size:72px">Small moves, big tidy-up</h2></div>');
+        kit.stage.append(this.head);
+        this.svg = UI.art(kit);
+        this.cards = CARDS.map((c, i) => {
+          const x = 140 + i * 560;
+          const box = UI.sock(kit, 'core', x, 260, 500, 170, c.t, 'font-size:32px;padding:0 28px');
+          const tag = kit.h('<p class="tag" style="left:' + (x + 2) + 'px;top:450px;white-space:normal;width:496px;box-sizing:border-box">' + c.d + '</p>');
+          kit.stage.append(box, tag);
+          return { c, box, tag };
+        });
+        this.steps = STEPS.map((s, i) => UI.sock(kit, i === 0 ? 'hub' : 'partner', 180 + i * 560, 640, 440, 90, s, 'font-size:28px'));
+        this.steps.forEach(s => kit.stage.append(s));
+        this.arrows = [0, 1].map(i => UI.cable(this.svg, 'M' + (620 + i * 560) + ' 685 L' + (718 + i * 560) + ' 685', 'main', true));
+        this.order = kit.h('<p class="kicker" style="position:absolute;left:180px;top:596px;margin:0">in this order</p>');
+        kit.stage.append(this.order);
+        this.end = kit.h('<div class="words" style="left:140px;top:340px;width:1640px;gap:28px;align-items:center;text-align:center"><h2 class="big">One umbrella for partners</h2><p class="sub" style="font-size:44px;color:var(--second)">One umbrella. Three moves. Order still to agree.</p></div>');
+        this.dotEl = kit.h('<div class="dot" style="left:951px;top:620px"></div>');
+        kit.stage.append(this.end, this.dotEl);
+        this.line = kit.stage.querySelector('.line');
+        this.bigEl = this.end.querySelector('.big');
+      },
+      render(t) {
+        const gone = 1 - eo(seg(t, 6.6, 7.2));
+        TextFx.fadeFromRight(this.line, t, -0.4);
+        this.head.style.opacity = gone;
+        const rise = (el, t0) => { const k = eob(seg(t, t0, t0 + 0.7), 1.5); el.style.opacity = seg(t, t0, t0 + 0.25) * gone; el.style.transform = 'translateY(' + lerp(50, 0, k) + 'px) scale(' + lerp(1, 0.92, 1 - gone) + ')'; };
+        this.cards.forEach(o => { rise(o.box, o.c.s); o.tag.style.opacity = eo(seg(t, o.c.s + 0.5, o.c.s + 0.9)) * gone; });
+        this.order.style.opacity = eo(seg(t, 4.4, 4.8)) * gone;
+        this.steps.forEach((s, i) => rise(s, 4.6 + i * 0.5));
+        this.arrows.forEach((a, i) => { a.draw(eo(seg(t, 5.0 + i * 0.5, 5.4 + i * 0.5))); });
+        this.svg.style.opacity = gone;
+        TextFx.fadeFromRight(this.bigEl, t, 7.1, { stagger: 0.12, dur: 0.6, dx: 30 });
+        this.end.style.opacity = t > 7.0 ? 1 : 0;
+        this.end.querySelector('.sub').style.opacity = eo(seg(t, 8.0, 8.6));
+        const dk = eob(seg(t, 7.9, 8.5), 1.8);
+        this.dotEl.style.opacity = seg(t, 7.9, 8.1);
+        this.dotEl.style.transform = 'scale(' + lerp(0.2, 1.4, dk) * (1 + Math.sin(t * 2.5) * 0.06) + ')';
+        this.bigEl.style.transform = 'translateY(' + (-(t - 7) * 1.2) + 'px)';
+      }
+    });
+  })();
+
+  // ---- the presenter: nine beats, click or key to advance ----
+  const BEATS = [
+    { id: 'knock', name: 'A partner knocks', dur: 8 },
+    { id: 'three-loops', name: 'Three loops today', dur: 12 },
+    { id: 'first-idea', name: 'First idea', dur: 9 },
+    { id: 'deeper', name: 'We looked deeper', dur: 8 },
+    { id: 'exits', name: 'Three exits', dur: 10 },
+    { id: 'doors-in', name: 'Three doors in', dur: 9 },
+    { id: 'dead-wires', name: 'Dead and doubled', dur: 8 },
+    { id: 'umbrella', name: 'One umbrella', dur: 16 },
+    { id: 'why', name: 'Why this one', dur: 10 }
+  ];
+  const stage = document.getElementById('stage'), wrap = document.getElementById('wrap');
+  const hudN = document.getElementById('hud-n'), hudName = document.getElementById('hud-name'), barFill = document.getElementById('bar-fill'), dots = document.getElementById('dots'), start = document.getElementById('start');
+  BEATS.forEach(() => dots.append(h('<i></i>')));
+  const boxes = BEATS.map(b => { const box = h('<div class="scene"></div>'); stage.insertBefore(box, start); return box; });
+  // build every scene once, at identity scale, so cable lengths measure right
+  BEATS.forEach((b, i) => { const sk = Object.create(kit); sk.stage = boxes[i]; SCENES[b.id].init(sk); SCENES[b.id].render(0); });
+
+  let cur = 0, t0 = 0, offset = 0, playing = false, started = false;
+  try { const s = parseInt(localStorage.getItem('umbrella-beat') || '0', 10); if (s >= 0 && s < BEATS.length) cur = s; } catch (e) {}
+  function now() { return performance.now() / 1000; }
+  function localT() { return playing ? offset + (now() - t0) : offset; }
+  function show(i, play, fromEnd) {
+    cur = Math.max(0, Math.min(BEATS.length - 1, i));
+    boxes.forEach((b, k) => b.classList.toggle('on', k === cur));
+    offset = fromEnd ? BEATS[cur].dur : 0; t0 = now(); playing = play;
+    hudN.textContent = String(cur + 1); hudName.textContent = BEATS[cur].name;
+    Array.from(dots.children).forEach((d, k) => { d.className = k < cur ? 'done' : k === cur ? 'now' : ''; });
+    try { localStorage.setItem('umbrella-beat', String(cur)); } catch (e) {}
+    render();
+  }
+  function render() {
+    const t = localT(), b = BEATS[cur];
+    SCENES[b.id].render(t);
+    barFill.style.width = (100 * Math.min(1, t / b.dur)) + '%';
+    start.style.opacity = started ? 0 : 1;
+  }
+  function advance() {
+    if (!started) { started = true; show(cur, true); return; }
+    const t = localT();
+    if (t < BEATS[cur].dur - 0.05) { offset = BEATS[cur].dur; t0 = now(); render(); return; }   // finish this beat
+    if (cur < BEATS.length - 1) show(cur + 1, true);
+  }
+  function back() { started = true; if (cur > 0) show(cur - 1, true, true); else show(0, true, true); }
+  function replay() { started = true; show(cur, true); }
+  function fit() { const s = Math.min((wrap.clientWidth - 32) / 1920, (wrap.clientHeight - 24) / 1080); stage.style.transform = 'scale(' + s + ')'; }
+  wrap.addEventListener('click', advance);
+  document.getElementById('btn-next').addEventListener('click', e => { e.stopPropagation(); advance(); });
+  document.getElementById('btn-prev').addEventListener('click', e => { e.stopPropagation(); back(); });
+  document.getElementById('btn-replay').addEventListener('click', e => { e.stopPropagation(); replay(); });
+  document.getElementById('btn-full').addEventListener('click', e => { e.stopPropagation(); const el = document.documentElement; if (document.fullscreenElement) { document.exitFullscreen && document.exitFullscreen(); } else if (el.requestFullscreen) { el.requestFullscreen().catch(() => {}); } });
+  document.addEventListener('keydown', e => {
+    if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter' || e.key === 'PageDown') { e.preventDefault(); advance(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); back(); }
+    else if (e.key === 'r' || e.key === 'R') { replay(); }
+    else if (e.key === 'f' || e.key === 'F') { document.getElementById('btn-full').click(); }
+    else if (e.key === 'Home') { show(0, true); }
+  });
+  window.addEventListener('resize', fit);
+  fit();
+  show(cur, false);
+  (function loop() { if (playing) render(); requestAnimationFrame(loop); })();
+})();
+</script>
